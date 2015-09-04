@@ -84,9 +84,13 @@ class AgentSupervisor():
         self._MAX_JMXFETCH_RESTARTS = 3
         self._count_jmxfetch_restarts = 0
 
+        # This allows us to use the system's Python in case there is no embedded python
+        embedded_python = '..\\embedded\\python.exe'
+        if not os.path.isfile(embedded_python):
+            embedded_python = "python"
+
         # Keep a list of running processes so we can start/end as needed.
         # Processes will start started in order and stopped in reverse order.
-        embedded_python = "..\\embedded\\python"
         self.procs = {
             'forwarder': ProcessWatchDog("forwarder",
                 DDProcess("Forwarder", [embedded_python, "ddagent.py"])),

@@ -66,8 +66,16 @@ class AgentService(win32serviceutil.ServiceFramework):
 
         self.log_path = os.path.join(_windows_commondata_path(), 'Datadog', 'logs', 'service.log')
 
-        self.agent_path = os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.dirname(os.path.realpath(__file__)))))
+        # Are we in a py2exed package or in a source install script or just a git pulled repo ?
+        if os.path.isfile(os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + \
+            "windows_supervisor.py"):
+            self.agent_path = os.path.dirname(os.path.dirname(
+                os.path.dirname(os.path.dirname(os.path.realpath(__file__))))) + "\\agent"
+        else:
+            self.agent_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+            # If we are in a proper source install script, let's get into the agent directory
+            if os.path.isdir(self.agent_path + "\\agent"):
+                self.agent_path += "agent"
         self.log("Agent path: {0}".format(self.agent_path))
         self.proc = None
 
@@ -118,10 +126,15 @@ class AgentService(win32serviceutil.ServiceFramework):
         # will be performed in a non blocking way. If an error is triggered
         # here, tell windows we're closing the service and report accordingly
         try:
-            self.log("Changing working directory to \"{0}\"".format(self.agent_path + "\\agent\\"))
+            self.log("Changing working directory to \"{0}\"".format(self.agent_path))
             os.chdir(self.agent_path)
 
-            self.proc = subprocess.Popen(["python", "windows_supervisor.py" , "start", "server"])
+            # This allows us to use the system's Python in case there is no embedded python
+            embedded_python = '..\\embedded\\python.exe'
+            if not os.path.isfile(embedded_python):
+                embedded_python = "python"
+
+            self.proc = subprocess.Popen([embedded_python, "windows_supervisor.py" , "start", "server"])
             os.chdir(self.agent_path + "\\win32")
         except WindowsError as e:
             self.log("WindowsError occured when starting our supervisor :\n\t"
